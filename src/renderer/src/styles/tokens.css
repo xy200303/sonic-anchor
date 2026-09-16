@@ -1,0 +1,55 @@
+/* 设计 token（详见 docs/03-UI-UX方案.md §2），与 theme/index.ts 的 Naive 覆写保持同源。
+   去 AI 味原则：暖调炭灰底 + 单一低饱和赭陶色点缀，不用蓝紫、不用渐变。 */
+:root {
+  --bg-base: #141311;
+  --bg-surface: #1c1b18;
+  --bg-elevated: #24221d;
+  --border-subtle: #34312a;
+  --text-primary: #edeae2;
+  --text-secondary: #a8a29a;
+  --text-tertiary: #6e6a61;
+  --brand: #c4703f;
+  --live-red: #e23e32;
+  --success: #6fa287;
+  --warning: #d9a441;
+  --danger: #e03131;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family:
+    Inter,
+    -apple-system,
+    'PingFang SC',
+    'Microsoft YaHei',
+    'Segoe UI',
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* 数据/计时类数字用等宽数字，防止跳动 */
+.mono-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4150;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
