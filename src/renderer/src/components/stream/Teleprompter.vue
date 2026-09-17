@@ -119,6 +119,7 @@ const upcoming = computed<UpcomingEntry[]>(() => {
 .teleprompter {
   display: flex;
   flex-direction: column;
+  height: 100%;
   border-radius: 8px;
   background: #0d0c0b;
   border: 1px solid var(--border-subtle);

@@ -3,9 +3,11 @@ import { onMounted, ref } from 'vue'
 import { useDialog, useMessage } from 'naive-ui'
 import type { Product, Script, ScriptSegment } from '@shared/ipc'
 import { audioEngine } from '@renderer/audio/engine'
+import { usePlanStore } from '@renderer/stores/plan'
 
 const message = useMessage()
 const dialog = useDialog()
+const planStore = usePlanStore()
 
 const products = ref<Product[]>([])
 const scripts = ref<Script[]>([])
@@ -25,6 +27,10 @@ async function refresh(): Promise<void> {
 
 onMounted(async () => {
   await refresh()
+  // 场次 store 可能尚未初始化（深链直达本页时），确保加载后再读当前主题
+  if (planStore.plans.length === 0) await planStore.load()
+  // 当前场次有主题且风格要求为空时预填，作为话术生成的方向提示
+  if (!styleHint.value && planStore.active?.theme) styleHint.value = planStore.active.theme
   window.api.onScriptDone((payload) => {
     generating.value = false
     if (payload.script) {

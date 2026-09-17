@@ -61,6 +61,11 @@ export interface CommentConfig {
   devSimulate: boolean
 }
 
+export interface LiveConfig {
+  /** 当前选中的直播场次 id（空串 = 未选择） */
+  activePlanId: string
+}
+
 export interface AppConfig {
   stream: StreamConfig
   bgm: BgmConfig
@@ -68,6 +73,7 @@ export interface AppConfig {
   llm: LlmConfig
   tts: TtsConfig
   comment: CommentConfig
+  live: LiveConfig
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -96,7 +102,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     voiceId: '',
     speed: 1.0
   },
-  comment: { appId: '', appSecret: '', roomId: '', devSimulate: false }
+  comment: { appId: '', appSecret: '', roomId: '', devSimulate: false },
+  live: { activePlanId: '' }
 }
 
 /** 以 dot path 标记的敏感字段，主进程写入前用 safeStorage 加密 */
@@ -321,6 +328,10 @@ export const IpcChannel = {
   ProductSave: 'product:save',
   ProductDelete: 'product:delete',
 
+  PlanList: 'plan:list',
+  PlanSave: 'plan:save',
+  PlanDelete: 'plan:delete',
+
   StreamStart: 'stream:start',
   StreamStop: 'stream:stop',
   StreamStats: 'stream:stats',
@@ -380,6 +391,27 @@ export interface Product {
   createdAt: number
 }
 
+// ---------- 直播场次 ----------
+
+/** 直播场次：一场直播的完整配置方案（主题 + 商品/话术/音色/BGM/自动回复） */
+export interface LivePlan {
+  id: string
+  /** 场次名称，如「周五晚 · 锅具专场」 */
+  name: string
+  /** 本场主题/方向（话术生成的方向提示） */
+  theme: string
+  productId: string | null
+  scriptId: string | null
+  /** voices 表主键 */
+  voiceId: string | null
+  bgmPath: string
+  /** 0 - 1 */
+  bgmVolume: number
+  autoReply: boolean
+  createdAt: number
+  updatedAt: number
+}
+
 export interface AppInfo {
   version: string
   platform: string
@@ -397,6 +429,11 @@ export interface AppApi {
     listProducts(): Promise<Product[]>
     saveProduct(p: Product): Promise<void>
     deleteProduct(id: string): Promise<void>
+  }
+  plan: {
+    list(): Promise<LivePlan[]>
+    save(p: LivePlan): Promise<void>
+    remove(id: string): Promise<void>
   }
   stream: {
     start(): Promise<StreamStartResult>

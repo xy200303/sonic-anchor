@@ -32,6 +32,11 @@ const api: AppApi = {
     saveProduct: (p) => invoke(IpcChannel.ProductSave, p),
     deleteProduct: (id) => invoke(IpcChannel.ProductDelete, id)
   },
+  plan: {
+    list: () => invoke(IpcChannel.PlanList),
+    save: (p) => invoke(IpcChannel.PlanSave, p),
+    remove: (id) => invoke(IpcChannel.PlanDelete, id)
+  },
   stream: {
     start: () => invoke(IpcChannel.StreamStart),
     stop: () => invoke(IpcChannel.StreamStop),

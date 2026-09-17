@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import type { Script } from '@shared/ipc'
 import { useConfigStore } from '@renderer/stores/config'
+import { usePlanStore } from '@renderer/stores/plan'
 import { audioEngine } from '@renderer/audio/engine'
 import { playbackScheduler } from '@renderer/audio/scheduler'
 
@@ -11,9 +13,11 @@ import { playbackScheduler } from '@renderer/audio/scheduler'
  */
 
 const configStore = useConfigStore()
+const planStore = usePlanStore()
 
 const scripts = ref<Script[]>([])
-const activeScriptId = ref('')
+// 话术默认跟随当前场次绑定；手动改选只影响本次播报，不回写场次
+const { activeScriptId } = storeToRefs(planStore)
 const playing = ref(playbackScheduler.isRunning)
 const bgmPlaying = ref(false)
 

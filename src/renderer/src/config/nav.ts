@@ -12,6 +12,7 @@ export const navMenus: SideNavItem[] = [
     icon: Radio,
     children: [
       { label: '直播控制台', key: '/' },
+      { label: '场次管理', key: '/plans' },
       { label: '话术脚本', key: '/script' },
       { label: '评论与回复', key: '/comments' }
     ]

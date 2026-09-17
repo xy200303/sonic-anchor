@@ -5,6 +5,7 @@ import SideNav from '@renderer/components/sidebar/SideNav.vue'
 import StatusBar from '@renderer/components/StatusBar.vue'
 import { navMenus } from '@renderer/config/nav'
 import { useConfigStore } from '@renderer/stores/config'
+import { usePlanStore } from '@renderer/stores/plan'
 import { useLiveStore } from '@renderer/stores/live'
 import { useFeedStore } from '@renderer/stores/feed'
 import { useAudioStore } from '@renderer/stores/audio'
@@ -14,6 +15,7 @@ import { playbackScheduler } from '@renderer/audio/scheduler'
 const route = useRoute()
 const router = useRouter()
 const configStore = useConfigStore()
+const planStore = usePlanStore()
 const live = useLiveStore()
 const feed = useFeedStore()
 const audio = useAudioStore()
@@ -22,6 +24,8 @@ const unsubs: (() => void)[] = []
 
 onMounted(async () => {
   await configStore.load()
+  // 场次依赖 config.live.activePlanId，须在配置加载后初始化
+  await planStore.load()
   unsubs.push(
     window.api.onLiveStateChanged((state) => live.applyState(state)),
     window.api.onStreamStatsChanged((stats) => live.applyStats(stats)),

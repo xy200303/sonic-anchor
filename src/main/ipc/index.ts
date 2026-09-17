@@ -2,6 +2,7 @@ import { app, dialog, ipcMain, BrowserWindow } from 'electron'
 import {
   IpcChannel,
   type AppConfig,
+  type LivePlan,
   type PartialDeep,
   type ScriptGenerateRequest,
   type ScriptSegment,
@@ -11,12 +12,15 @@ import {
 } from '@shared/ipc'
 import { loadConfig, updateConfig } from '../modules/store/config'
 import {
+  deletePlan,
   deleteProduct,
   getAnalytics,
   getAllRepliesCsv,
   listComments,
+  listPlans,
   listProducts,
   listVoices,
+  savePlan,
   saveProduct,
   saveVoice,
   deleteVoice
@@ -45,6 +49,11 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.ProductList, () => listProducts())
   ipcMain.handle(IpcChannel.ProductSave, (_e, p: Product) => saveProduct(p))
   ipcMain.handle(IpcChannel.ProductDelete, (_e, id: string) => deleteProduct(id))
+
+  // ---------- 直播场次 ----------
+  ipcMain.handle(IpcChannel.PlanList, () => listPlans())
+  ipcMain.handle(IpcChannel.PlanSave, (_e, p: LivePlan) => savePlan(p))
+  ipcMain.handle(IpcChannel.PlanDelete, (_e, id: string) => deletePlan(id))
 
   // ---------- 推流 / 场景 ----------
   ipcMain.handle(IpcChannel.StreamStart, (): Promise<StreamStartResult> => streamService.start())

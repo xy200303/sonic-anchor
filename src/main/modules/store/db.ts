@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 import type {
   CommentEvent,
   IntentType,
+  LivePlan,
   Product,
   ReplyItem,
   Script,
@@ -70,6 +71,19 @@ CREATE TABLE IF NOT EXISTS reply_log (
   status TEXT DEFAULT 'pending',
   latency_ms INTEGER,
   created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS live_plans (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  theme TEXT DEFAULT '',
+  product_id TEXT,
+  script_id TEXT,
+  voice_id TEXT,
+  bgm_path TEXT DEFAULT '',
+  bgm_volume REAL DEFAULT 0.3,
+  auto_reply INTEGER DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
 );
 `
 
@@ -256,6 +270,66 @@ export function saveVoice(v: VoiceProfile): void {
 
 export function deleteVoice(id: string): void {
   run((d) => d.prepare('DELETE FROM voices WHERE id = ?').run(id), undefined)
+}
+
+// ---------- 直播场次 ----------
+
+interface PlanRow {
+  id: string
+  name: string
+  theme: string
+  product_id: string | null
+  script_id: string | null
+  voice_id: string | null
+  bgm_path: string
+  bgm_volume: number
+  auto_reply: number
+  created_at: number
+  updated_at: number
+}
+
+function toPlan(r: PlanRow): LivePlan {
+  return {
+    id: r.id,
+    name: r.name,
+    theme: r.theme,
+    productId: r.product_id,
+    scriptId: r.script_id,
+    voiceId: r.voice_id,
+    bgmPath: r.bgm_path,
+    bgmVolume: r.bgm_volume,
+    autoReply: r.auto_reply === 1,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at
+  }
+}
+
+export function listPlans(): LivePlan[] {
+  return run(
+    (d) =>
+      d
+        .prepare('SELECT * FROM live_plans ORDER BY updated_at DESC')
+        .all()
+        .map((r) => toPlan(r as PlanRow)),
+    []
+  )
+}
+
+export function savePlan(p: LivePlan): void {
+  run((d) => {
+    d.prepare(
+      `INSERT INTO live_plans
+         (id, name, theme, product_id, script_id, voice_id, bgm_path, bgm_volume, auto_reply, created_at, updated_at)
+       VALUES (@id, @name, @theme, @productId, @scriptId, @voiceId, @bgmPath, @bgmVolume, @autoReply, @createdAt, @updatedAt)
+       ON CONFLICT(id) DO UPDATE SET
+         name=@name, theme=@theme, product_id=@productId, script_id=@scriptId, voice_id=@voiceId,
+         bgm_path=@bgmPath, bgm_volume=@bgmVolume, auto_reply=@autoReply, updated_at=@updatedAt`
+    ).run({ ...p, autoReply: p.autoReply ? 1 : 0, createdAt: p.createdAt || Date.now() })
+  }, undefined)
+}
+
+export function deletePlan(id: string): void {
+  run((d) => d.prepare('DELETE FROM live_plans WHERE id = ?').run(id), undefined)
 }
 
 /** 首次启动注入内置音色（火山大模型音色库通用音色） */

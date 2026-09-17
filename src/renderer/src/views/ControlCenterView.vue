@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useDialog, useMessage } from 'naive-ui'
+import { PanelRightClose, PanelRightOpen } from 'lucide-vue-next'
 import type { CommentEvent } from '@shared/ipc'
 import { useLiveStore } from '@renderer/stores/live'
 import { useAudioStore } from '@renderer/stores/audio'
 import { useConfigStore } from '@renderer/stores/config'
+import { usePlanStore } from '@renderer/stores/plan'
 import LiveStatusBadge from '@renderer/components/LiveStatusBadge.vue'
 import StreamPreview from '@renderer/components/stream/StreamPreview.vue'
 import Teleprompter from '@renderer/components/stream/Teleprompter.vue'
@@ -18,6 +20,7 @@ import { playbackScheduler } from '@renderer/audio/scheduler'
 const live = useLiveStore()
 const audio = useAudioStore()
 const configStore = useConfigStore()
+const planStore = usePlanStore()
 const message = useMessage()
 const dialog = useDialog()
 
@@ -25,6 +28,27 @@ const starting = ref(false)
 
 const canStart = computed(() => ['idle', 'ready', 'ended', 'error'].includes(live.state))
 const isLive = computed(() => live.state === 'live')
+
+// ---------- 场次切换 ----------
+
+async function switchPlan(id: string): Promise<void> {
+  await planStore.setActive(id)
+  const plan = planStore.plans.find((p) => p.id === id)
+  message.success(`已切换到场次：${plan?.name ?? ''}`)
+}
+
+// ---------- 提词器侧栏收起 / 展开（偏好持久化） ----------
+
+const TP_COLLAPSED_KEY = 'teleprompter-collapsed'
+const tpCollapsed = ref(false)
+
+onMounted(() => {
+  tpCollapsed.value = localStorage.getItem(TP_COLLAPSED_KEY) === '1'
+})
+
+watch(tpCollapsed, (v) => {
+  localStorage.setItem(TP_COLLAPSED_KEY, v ? '1' : '0')
+})
 
 // ---------- 开播 / 停播 ----------
 
@@ -130,6 +154,15 @@ async function panic(): Promise<void> {
     <div class="header">
       <h1 class="title">直播控制台</h1>
       <LiveStatusBadge />
+      <n-select
+        :value="planStore.activeId || null"
+        size="small"
+        class="plan-select"
+        :options="planStore.plans.map((p) => ({ label: p.name, value: p.id }))"
+        placeholder="选择场次"
+        :disabled="isLive"
+        @update:value="switchPlan"
+      />
       <n-tag v-if="live.stats.reconnecting" type="warning" size="small">
         断流重连中（第 {{ live.stats.reconnectAttempt }} 次）
       </n-tag>
@@ -137,28 +170,41 @@ async function panic(): Promise<void> {
         正在播报：{{ audio.nowPlaying.label }}
       </n-tag>
       <AudioMeter class="meter" />
+      <button
+        class="tp-toggle"
+        :aria-label="tpCollapsed ? '展开提词器' : '收起提词器'"
+        @click="tpCollapsed = !tpCollapsed"
+      >
+        <PanelRightOpen v-if="tpCollapsed" :size="16" :stroke-width="2" />
+        <PanelRightClose v-else :size="16" :stroke-width="2" />
+      </button>
     </div>
 
-    <div class="grid">
-      <section class="panel-card preview">
-        <StreamPreview />
-        <div class="preview-meta">
-          <span>{{ live.stats.bitrateKbps }} kbps</span>
-          <span>丢帧 {{ live.stats.droppedFrames }}</span>
-          <span class="mono-nums">时长 {{ live.durationText }}</span>
-        </div>
-        <Teleprompter class="tp-slot" />
-      </section>
+    <div class="body">
+      <div class="grid">
+        <section class="panel-card preview">
+          <StreamPreview />
+          <div class="preview-meta">
+            <span>{{ live.stats.bitrateKbps }} kbps</span>
+            <span>丢帧 {{ live.stats.droppedFrames }}</span>
+            <span class="mono-nums">时长 {{ live.durationText }}</span>
+          </div>
+        </section>
 
-      <section class="panel-card column">
-        <h2 class="column-title">实时评论流</h2>
-        <CommentFeed @manual="manualComment = $event" />
-      </section>
+        <section class="panel-card column">
+          <h2 class="column-title">实时评论流</h2>
+          <CommentFeed @manual="manualComment = $event" />
+        </section>
 
-      <section class="panel-card column">
-        <h2 class="column-title">AI 回复队列</h2>
-        <ReplyQueue />
-      </section>
+        <section class="panel-card column">
+          <h2 class="column-title">AI 回复队列</h2>
+          <ReplyQueue />
+        </section>
+      </div>
+
+      <aside v-show="!tpCollapsed" class="tp-aside">
+        <Teleprompter />
+      </aside>
     </div>
 
     <div class="actions">
@@ -246,11 +292,45 @@ async function panic(): Promise<void> {
 .meter {
   margin-left: auto;
 }
+.plan-select {
+  width: 200px;
+}
+.tp-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition:
+    background 150ms ease-out,
+    color 150ms ease-out;
+}
+.tp-toggle:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+.body {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
 .grid {
   display: grid;
   grid-template-columns: 1.2fr 1fr 1fr;
   gap: 16px;
   flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.tp-aside {
+  width: 320px;
+  flex-shrink: 0;
   min-height: 0;
 }
 .preview {
@@ -259,10 +339,6 @@ async function panic(): Promise<void> {
   padding: 12px;
   gap: 10px;
   min-height: 0;
-}
-.tp-slot {
-  height: 220px;
-  flex-shrink: 0;
 }
 .preview-meta {
   display: flex;
