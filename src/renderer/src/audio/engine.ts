@@ -35,6 +35,7 @@ class AudioEngine {
   private duckingDepthDb = 14
   private aiMuted = false
   private activeTts = 0
+  private bgmBaseVolume = 0.3
   private levelsTimer: ReturnType<typeof setInterval> | null = null
   private events: EngineEvents | null = null
 
@@ -225,9 +226,8 @@ class AudioEngine {
   }
 
   setBgmVolume(volume: number): void {
-    if (!this.bgmGain || !this.ctx) return
-    const target = this.duckTargetVolume(volume)
-    this.bgmGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.15)
+    this.bgmBaseVolume = volume
+    this.applyBgmGain()
   }
 
   // ---------- ducking / 静音 ----------
@@ -235,21 +235,21 @@ class AudioEngine {
   setDucking(enabled: boolean, depthDb: number): void {
     this.duckingEnabled = enabled
     this.duckingDepthDb = depthDb
-    this.applyDuck(this.activeTts > 0)
+    this.applyBgmGain()
   }
 
-  private duckTargetVolume(volume: number): number {
-    if (this.duckingEnabled && this.activeTts > 0) {
-      return volume * 10 ** (-this.duckingDepthDb / 20)
-    }
-    return volume
-  }
-
-  private applyDuck(talking: boolean): void {
+  /** BGM 最终增益 = 基础音量 × ducking 系数 × AI 静音开关 */
+  private applyBgmGain(): void {
     if (!this.bgmGain || !this.ctx) return
-    const target = talking ? 10 ** (-this.duckingDepthDb / 20) : 1
-    if (!this.duckingEnabled) return
-    this.bgmGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.2)
+    let target = this.aiMuted ? 0 : this.bgmBaseVolume
+    if (target > 0 && this.duckingEnabled && this.activeTts > 0) {
+      target *= 10 ** (-this.duckingDepthDb / 20)
+    }
+    this.bgmGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.15)
+  }
+
+  private applyDuck(_talking: boolean): void {
+    this.applyBgmGain()
   }
 
   setAiMuted(muted: boolean): void {
@@ -261,9 +261,12 @@ class AudioEngine {
     return this.aiMuted
   }
 
+  /** AI 静音只闷 TTS + BGM 总线，麦克风人声不受影响 */
   private applyMute(): void {
-    if (!this.masterGain || !this.ctx) return
-    this.masterGain.gain.setTargetAtTime(this.aiMuted ? 0 : 1, this.ctx.currentTime, 0.05)
+    if (!this.ctx) return
+    const t = this.ctx.currentTime
+    this.ttsGain?.gain.setTargetAtTime(this.aiMuted ? 0 : 1, t, 0.05)
+    this.bgmGain?.gain.setTargetAtTime(this.aiMuted ? 0 : 1, t, 0.05)
   }
 
   /** 紧急停止：立即停掉所有 AI 播报（BGM 保留，推流不断） */

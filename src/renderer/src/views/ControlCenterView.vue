@@ -4,6 +4,7 @@ import { useDialog, useMessage } from 'naive-ui'
 import type { CommentEvent } from '@shared/ipc'
 import { useLiveStore } from '@renderer/stores/live'
 import { useAudioStore } from '@renderer/stores/audio'
+import { useConfigStore } from '@renderer/stores/config'
 import LiveStatusBadge from '@renderer/components/LiveStatusBadge.vue'
 import StreamPreview from '@renderer/components/stream/StreamPreview.vue'
 import CommentFeed from '@renderer/components/stream/CommentFeed.vue'
@@ -15,6 +16,7 @@ import { playbackScheduler } from '@renderer/audio/scheduler'
 
 const live = useLiveStore()
 const audio = useAudioStore()
+const configStore = useConfigStore()
 const message = useMessage()
 const dialog = useDialog()
 
@@ -53,6 +55,7 @@ function confirmStop(): void {
 // ---------- 真人接管（按住说话） ----------
 
 const takingOver = ref(false)
+let adhocMic = false
 
 async function takeoverStart(): Promise<void> {
   takingOver.value = true
@@ -60,6 +63,18 @@ async function takeoverStart(): Promise<void> {
   audioEngine.setAiMuted(true)
   audio.setAiMuted(true)
   await window.api.audioControl.setAiMuted(true)
+  // 接管即说话：麦克风未接入时自动拉起（设置里已开启则复用现有总线）
+  if (!audioEngine.micActive) {
+    try {
+      await audioEngine.startMic('', {
+        autoYield: false,
+        forwardPcm: configStore.config.stream.mode === 'direct'
+      })
+      adhocMic = true
+    } catch {
+      message.warning('AI 已静音。要让声音进直播，请在「设置 → 音频」开启真人麦克风（伴侣模式也可直接用伴侣的麦克风）')
+    }
+  }
 }
 
 async function takeoverEnd(): Promise<void> {
@@ -68,6 +83,10 @@ async function takeoverEnd(): Promise<void> {
   audioEngine.setAiMuted(false)
   audio.setAiMuted(false)
   await window.api.audioControl.setAiMuted(false)
+  if (adhocMic) {
+    audioEngine.stopMic()
+    adhocMic = false
+  }
 }
 
 // ---------- 插话 / 手动回复 ----------
