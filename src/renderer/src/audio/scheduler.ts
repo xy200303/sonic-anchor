@@ -36,6 +36,7 @@ class PlaybackScheduler {
     this.scriptIdx = 0
     this.running = true
     this.paused = false
+    this.syncUpcoming()
     void this.loop()
     log.info('播报调度器启动，话术:', script.title)
     return { ok: true }
@@ -46,6 +47,7 @@ class PlaybackScheduler {
     this.script = null
     audioEngine.stopCurrentTts()
     this.setNowPlaying(null)
+    useAudioStore().setUpcomingSegments([])
   }
 
   pause(): void {
@@ -70,7 +72,12 @@ class PlaybackScheduler {
       // 1) 回复队列优先
       const reply = await window.api.reply.next()
       if (this.running && reply?.audioPath) {
-        this.setNowPlaying({ id: reply.id, label: `回复 @${reply.author}`, kind: 'reply' })
+        this.setNowPlaying({
+          id: reply.id,
+          label: `回复 @${reply.author}`,
+          kind: 'reply',
+          text: reply.replyText
+        })
         this.pushToStream(reply.audioPath)
         await audioEngine.playTts(reply.audioPath)
         await window.api.reply.action(reply.id, 'done')
@@ -81,7 +88,13 @@ class PlaybackScheduler {
       // 2) 话术轮播
       const seg = this.nextSegment()
       if (this.running && seg?.audioPath) {
-        this.setNowPlaying({ id: seg.id, label: `话术 · ${this.segmentLabel(seg)}`, kind: 'script' })
+        this.setNowPlaying({
+          id: seg.id,
+          label: `话术 · ${this.segmentLabel(seg)}`,
+          kind: 'script',
+          text: seg.text
+        })
+        this.syncUpcoming()
         this.pushToStream(seg.audioPath)
         await audioEngine.playTts(seg.audioPath)
         this.setNowPlaying(null)
@@ -94,13 +107,9 @@ class PlaybackScheduler {
 
   /** 开场播一次；之后 pitch + urge 段落无限循环 */
   private nextSegment(): ScriptSegment | null {
-    if (!this.script) return null
-    const ready = this.script.segments.filter((s) => s.status === 'ready' && s.audioPath)
-    if (ready.length === 0) return null
-
-    const opening = ready.find((s) => s.type === 'opening')
-    const loopable = ready.filter((s) => s.type !== 'opening' && s.type !== 'ending')
-    const pool = loopable.length > 0 ? loopable : ready
+    const info = this.poolInfo()
+    if (!info) return null
+    const { opening, pool } = info
 
     if (this.scriptIdx === 0 && opening) {
       this.scriptIdx = 1
@@ -109,6 +118,40 @@ class PlaybackScheduler {
     const seg = pool[(this.scriptIdx - (opening ? 1 : 0)) % pool.length]
     this.scriptIdx += 1
     return seg
+  }
+
+  /** 不推进指针，预览接下来要播的 n 段（提词器"接下来"区域用） */
+  private peekSegments(count: number): ScriptSegment[] {
+    const info = this.poolInfo()
+    if (!info) return []
+    const { opening, pool } = info
+    const out: ScriptSegment[] = []
+    let idx = this.scriptIdx
+    while (out.length < count) {
+      if (idx === 0 && opening) {
+        out.push(opening)
+        idx = 1
+        continue
+      }
+      out.push(pool[(idx - (opening ? 1 : 0)) % pool.length])
+      idx += 1
+    }
+    return out
+  }
+
+  private poolInfo(): { opening: ScriptSegment | undefined; pool: ScriptSegment[] } | null {
+    if (!this.script) return null
+    const ready = this.script.segments.filter((s) => s.status === 'ready' && s.audioPath)
+    if (ready.length === 0) return null
+    const opening = ready.find((s) => s.type === 'opening')
+    const loopable = ready.filter((s) => s.type !== 'opening' && s.type !== 'ending')
+    return { opening, pool: loopable.length > 0 ? loopable : ready }
+  }
+
+  private syncUpcoming(): void {
+    useAudioStore().setUpcomingSegments(
+      this.peekSegments(3).map((s) => ({ label: `话术 · ${this.segmentLabel(s)}`, text: s.text }))
+    )
   }
 
   private segmentLabel(seg: ScriptSegment): string {

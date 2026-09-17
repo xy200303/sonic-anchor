@@ -71,7 +71,7 @@ onBeforeUnmount(() => cancelAnimationFrame(rafId))
   border-radius: 8px;
   background: #0d0c0b;
   border: 1px solid var(--border-subtle);
-  min-height: 320px;
+  min-height: 160px;
   overflow: hidden;
 }
 .viz-canvas {

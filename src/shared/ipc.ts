@@ -307,6 +307,8 @@ export interface NowPlaying {
   id: string
   label: string
   kind: 'script' | 'reply' | 'manual'
+  /** 当前播报的完整文字稿（用于控制台提词器） */
+  text?: string
 }
 
 // ---------- IPC channel ----------

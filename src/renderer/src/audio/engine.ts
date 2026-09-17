@@ -100,6 +100,13 @@ class AudioEngine {
     resolve()
   }
 
+  /** 当前 TTS 播放进度 0~1，未播放或时长未知时返回 null */
+  getTtsProgress(): number | null {
+    const el = this.ttsEl
+    if (!el || !Number.isFinite(el.duration) || el.duration <= 0) return null
+    return Math.min(1, el.currentTime / el.duration)
+  }
+
   stopCurrentTts(): void {
     if (this.ttsEl) {
       this.ttsEl.pause()

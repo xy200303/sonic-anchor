@@ -7,6 +7,7 @@ import { useAudioStore } from '@renderer/stores/audio'
 import { useConfigStore } from '@renderer/stores/config'
 import LiveStatusBadge from '@renderer/components/LiveStatusBadge.vue'
 import StreamPreview from '@renderer/components/stream/StreamPreview.vue'
+import Teleprompter from '@renderer/components/stream/Teleprompter.vue'
 import CommentFeed from '@renderer/components/stream/CommentFeed.vue'
 import ReplyQueue from '@renderer/components/stream/ReplyQueue.vue'
 import BroadcastControls from '@renderer/components/stream/BroadcastControls.vue'
@@ -146,6 +147,7 @@ async function panic(): Promise<void> {
           <span>丢帧 {{ live.stats.droppedFrames }}</span>
           <span class="mono-nums">时长 {{ live.durationText }}</span>
         </div>
+        <Teleprompter class="tp-slot" />
       </section>
 
       <section class="panel-card column">
@@ -256,6 +258,11 @@ async function panic(): Promise<void> {
   flex-direction: column;
   padding: 12px;
   gap: 10px;
+  min-height: 0;
+}
+.tp-slot {
+  height: 220px;
+  flex-shrink: 0;
 }
 .preview-meta {
   display: flex;
