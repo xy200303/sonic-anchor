@@ -49,13 +49,18 @@
       "out/**",
       "package.json"
     ],
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**",
+      "node_modules/better-sqlite3/**"
+    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "AI直播助手"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "artifactName": "sonic-anchor-setup-${version}.${ext}"
     }
   }
 }
