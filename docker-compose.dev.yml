@@ -1,0 +1,85 @@
+name: sonic-anchor-dev
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-sonic_anchor}
+    ports:
+      - "25434:5432"
+    volumes:
+      - postgres_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "26381:6379"
+    volumes:
+      - redis_dev:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-dev
+    env_file:
+      - path: .env.dev
+        required: false
+    environment:
+      POSTGRES_DSN: host=postgres port=5432 user=${POSTGRES_USER:-postgres} password=${POSTGRES_PASSWORD:-change-me} dbname=${POSTGRES_DB:-sonic_anchor} sslmode=disable TimeZone=Asia/Shanghai
+      REDIS_ADDR: redis:6379
+    command:
+      - air
+      - -build.cmd
+      - go build -o ./tmp/server ./cmd/server
+      - -build.bin
+      - ./tmp/server
+      - -build.include_ext
+      - go,sql
+      - -build.exclude_dir
+      - tmp
+      - -build.delay
+      - "300"
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./backend:/app
+      - go_modules:/go/pkg/mod
+      - go_build:/root/.cache/go-build
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-dev
+    environment:
+      VITE_PROXY_TARGET: http://backend:8090
+    ports:
+      - "5180:5180"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_dev:
+  redis_dev:
+  go_modules:
+  go_build:

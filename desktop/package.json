@@ -1,0 +1,66 @@
+{
+  "name": "sonic-anchor",
+  "version": "0.1.0",
+  "description": "AI 直播助手：AI 语音讲解 + 评论自动回复 + 一键推流到抖音",
+  "main": "./out/main/index.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "dist": "electron-vite build && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "echarts": "^6.1.0",
+    "electron-log": "^5.2.4",
+    "ffmpeg-static": "^5.3.0",
+    "lucide-vue-next": "^0.462.0",
+    "naive-ui": "^2.40.1",
+    "pinia": "^2.2.6",
+    "vue": "^3.5.13",
+    "vue-echarts": "^8.3.0",
+    "vue-router": "^4.4.5",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/ws": "^8.5.13",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "typescript": "~5.6.3",
+    "unocss": "^0.64.1",
+    "vite": "^5.4.11",
+    "vue-tsc": "^2.1.10"
+  },
+  "build": {
+    "appId": "com.ailive.assistant",
+    "productName": "AI直播助手",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**",
+      "node_modules/better-sqlite3/**"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "AI直播助手"
+    },
+    "win": {
+      "target": "nsis",
+      "artifactName": "sonic-anchor-setup-${version}.${ext}"
+    }
+  }
+}

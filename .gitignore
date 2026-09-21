@@ -1,7 +1,16 @@
 node_modules
+**/node_modules
 out
+**/out
 release
+**/release
 dist
+**/dist
 *.log
 *.tsbuildinfo
 .DS_Store
+.env
+.env.dev
+.env.prod
+backend/tmp
+backend/data
